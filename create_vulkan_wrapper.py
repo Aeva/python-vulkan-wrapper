@@ -1,18 +1,23 @@
 import re
-import urllib.request as req
+import os
+sdk_path = os.environ["VULKAN_SDK"]
 
-src = req.urlopen("https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/master/include/vulkan/vulkan_core.h").read().decode('utf-8')
+def read(path):
+    with open(os.path.join(sdk_path, path), 'r') as infile:
+        return infile.read()
 
-src_win32 = req.urlopen("https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/master/include/vulkan/vulkan_win32.h").read().decode('utf-8')
+src = read("include/vulkan/vulkan_core.h")
 
-src_xcb = req.urlopen("https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/master/include/vulkan/vulkan_xcb.h").read().decode('utf-8')
+src_win32 = read("include/vulkan/vulkan_win32.h")
+
+src_xcb = read("include/vulkan/vulkan_xcb.h")
 
 src += "\n\n" + src_win32 + "\n\n" + src_xcb
 
 
 BASE = r"""
 #
-# Vulkan wrapper generated from "https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/master/include/vulkan/vulkan_core.h"
+# Vulkan wrapper generated from Vulkan headers in the installed Vulkan SDK.
 #
 
 from ctypes import c_int8, c_uint16, c_int32, c_uint32, c_uint64, c_size_t, c_float, c_char, c_char_p, c_void_p, POINTER, Structure, Union, cast
@@ -252,7 +257,11 @@ def parse_structs(f):
         f.write("{0} = define_{1}('{0}', \n".format(name, _type))
         for type_, fname in fields:
             if '[' in fname:
-                fname, type_ = parse_array(fname, type_)
+                try:
+                    fname, type_ = parse_array(fname, type_)
+                except:
+                    print(f"Error parsing \"{fname}\", skipping definition.")
+                    continue
             f.write("    ('{}', {}),\n".format(fix_arg(fname), do_type(type_)))
         f.write(")\n\n")
 
